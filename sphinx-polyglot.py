@@ -59,6 +59,8 @@ class PolyglotDomain(Domain):
     #name, label = 'polyglot', l_('Polyglot')
     object_types = {
       'assembly':  ObjType(l_('assembly'),  'assembly'),
+      'channel':   ObjType(l_('channel'),   'channel'),
+      'function':  ObjType(l_('function'),  'function'),
       'header':    ObjType(l_('header'),    'header'),
       'library':   ObjType(l_('library'),   'library'),
       'module':    ObjType(l_('module'),    'module'),
@@ -66,6 +68,10 @@ class PolyglotDomain(Domain):
       'package':   ObjType(l_('package'),   'package'),
       'schema':    ObjType(l_('schema'),    'schema'),
       'system':    ObjType(l_('system'),    'system'),
+      'table':     ObjType(l_('table'),     'table'),
+      'trigger':   ObjType(l_('trigger'),   'trigger'),
+      'type':      ObjType(l_('type'),      'type'),
+      'view':      ObjType(l_('view'),      'view'),
     }
     directives = {}
     initial_data = {
@@ -155,7 +161,13 @@ class RubyDomain(PolyglotDomain):
 class SQLDomain(PolyglotDomain):
     name, label = 'sql', l_('SQL')
     directives = {
-      'schema': make_directive('schema'),
+      'channel':  make_directive('channel'),
+      'function': make_directive('function'),
+      'schema':   make_directive('schema'),
+      'table':    make_directive('table'),
+      'trigger':  make_directive('trigger'),
+      'type':     make_directive('type'),
+      'view':     make_directive('view'),
     }
 
 def setup(app):
