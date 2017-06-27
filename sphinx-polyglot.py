@@ -6,26 +6,39 @@
 #
 # This is free and unencumbered software released into the public domain.
 
+import re
+
+from docutils import nodes
 from sphinx import addnodes
 from sphinx.directives import ObjectDescription
 from sphinx.domains import Domain, ObjType
 from sphinx.locale import l_, _
 
-class PolyglotObject(ObjectDescription):
-    def handle_signature(self, sig, signode):
-        self.describe_signature(sig, signode) # TODO
-        return sig
+GO_FUNC_SIG_RE = re.compile(
+  r'''^
+      (?: \( \S+\s+([^)]+) \) )? \s*  # method receiver
+      ([\w]+) \s*                     # function name
+      \( ([^)]*) \) \s*               # function parameters
+      (.*)$                           # return type
+  ''', re.VERBOSE)
 
-    def describe_signature(self, _sig, _signode):
+class PolyglotObject(ObjectDescription):
+    def handle_signature(self, sig, sig_node):
+        result = self.describe_signature(sig, sig_node) # TODO
+        if result is None:
+            return sig
+        return result
+
+    def describe_signature(self, _sig, _sig_node):
         raise NotImplementedError()
 
-    def add_target_and_index(self, name, sig, signode):
+    def add_target_and_index(self, name, sig, sig_node):
         target_name = '%s-%s' % (self.objtype, name) # for <a href="..."
         if target_name not in self.state.document.ids:
-            signode['names'].append(target_name)
-            signode['ids'].append(target_name)
-            signode['first'] = (not self.names)
-            self.state.document.note_explicit_target(signode)
+            sig_node['names'].append(target_name)
+            sig_node['ids'].append(target_name)
+            sig_node['first'] = (not self.names)
+            self.state.document.note_explicit_target(sig_node)
 
             objects = self.env.domaindata[self.domain]['objects']
             key = (self.objtype, name)
@@ -45,12 +58,43 @@ def make_directive(directive_name):
             domain_label = self.env.domains[self.domain].label
             return _('%s (%s %s)') % (name, domain_label, directive_name)
 
-        def describe_signature(self, sig, signode):
+        def describe_signature(self, sig, sig_node):
             annot_text = directive_name + ' '
-            signode += addnodes.desc_annotation(annot_text, annot_text)
-            signode += addnodes.desc_name(sig, sig)
+            sig_node += addnodes.desc_annotation(annot_text, annot_text)
+            sig_node += addnodes.desc_name(sig, sig)
 
     return PolyglotDirective
+
+class GoFuncDirective(PolyglotObject):
+    def get_index_text(self, _objtype, name):
+        return _('%s (Go function)') % name
+
+    def describe_signature(self, sig, sig_node):
+        sig_match = GO_FUNC_SIG_RE.match(sig)
+        if sig_match is None:
+            raise ValueError('no match')
+        method_receiver, func_name, func_params, func_return = sig_match.groups()
+
+        sig_node += addnodes.desc_annotation('func ', 'func ')
+
+        if method_receiver is not None:
+            param_list = addnodes.desc_parameterlist()
+            param_list += addnodes.desc_parameter(method_receiver, method_receiver, noemph=True)
+            sig_node += param_list
+
+        sig_node += addnodes.desc_name(func_name, func_name)
+
+        if func_params is not None:
+            param_list = addnodes.desc_parameterlist()
+            param = addnodes.desc_parameter(func_params, func_params, noemph=True) # TODO: split params
+            param_list += param
+            sig_node += param_list
+
+        if func_return is not None:
+            sig_node += nodes.Text(' ')
+            sig_node += addnodes.desc_returns(func_return, func_return)
+
+        return func_name
 
 class PolyglotDomain(Domain):
     """Base class for polyglot domains."""
@@ -112,7 +156,7 @@ class GoDomain(PolyglotDomain):
     name, label = 'go', l_('Go')
     directives = {
       'const':   make_directive('const'),
-      'func':    make_directive('func'),
+      'func':    GoFuncDirective,
       'package': make_directive('package'),
       'type':    make_directive('type'),
     }
