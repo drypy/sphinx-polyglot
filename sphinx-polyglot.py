@@ -149,6 +149,7 @@ class PolyglotDomain(Domain):
     object_types = {
       'assembly':  ObjType(l_('assembly'),  'assembly'),
       'channel':   ObjType(l_('channel'),   'channel'),
+      'class':     ObjType(l_('class'),     'class'),
       'const':     ObjType(l_('constant'),  'constant'),
       'func':      ObjType(l_('function'),  'function'),
       'function':  ObjType(l_('function'),  'function'),
@@ -173,6 +174,7 @@ class PolyglotDomain(Domain):
 class CLDomain(PolyglotDomain):
     name, label = 'lisp', l_('Common Lisp')
     directives = {
+      'class':   make_directive('class', ':'),
       'package': make_namespace_directive('package'),
       'system':  make_directive('system'),
     }
@@ -181,6 +183,7 @@ class DotnetDomain(PolyglotDomain):
     name, label = 'dotnet', l_('.NET')
     directives = {
       'assembly': make_namespace_directive('assembly'),
+      'class':    make_directive('class', '.'),
     }
 
 class ElixirDomain(PolyglotDomain):
@@ -209,6 +212,7 @@ class GoDomain(PolyglotDomain):
 class JSDomain(PolyglotDomain):
     name, label = 'js', l_('JavaScript')
     directives = {
+      'class':   make_directive('class', '.'),
       'module':  make_namespace_directive('module'),
       'package': make_directive('package'),
     }
@@ -216,6 +220,7 @@ class JSDomain(PolyglotDomain):
 class JVMDomain(PolyglotDomain):
     name, label = 'jvm', l_('JVM')
     directives = {
+      'class':   make_directive('class', '.'),
       'package': make_namespace_directive('package'),
     }
 
@@ -241,6 +246,7 @@ class OCamlDomain(PolyglotDomain):
 class PHPDomain(PolyglotDomain):
     name, label = 'php', l_('PHP')
     directives = {
+      'class':     make_directive('class', '\\'),
       'namespace': make_namespace_directive('namespace'),
       'package':   make_directive('package'),
     }
@@ -248,6 +254,7 @@ class PHPDomain(PolyglotDomain):
 class RubyDomain(PolyglotDomain):
     name, label = 'rb', l_('Ruby')
     directives = {
+      'class':   make_directive('class', '::'),
       'library': make_directive('library'),
       'module':  make_namespace_directive('module'),
     }
