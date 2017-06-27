@@ -60,6 +60,8 @@ class PolyglotDomain(Domain):
     object_types = {
       'assembly':  ObjType(l_('assembly'),  'assembly'),
       'channel':   ObjType(l_('channel'),   'channel'),
+      'const':     ObjType(l_('constant'),  'constant'),
+      'func':      ObjType(l_('function'),  'function'),
       'function':  ObjType(l_('function'),  'function'),
       'header':    ObjType(l_('header'),    'header'),
       'library':   ObjType(l_('library'),   'library'),
@@ -109,7 +111,10 @@ class ErlangDomain(PolyglotDomain):
 class GoDomain(PolyglotDomain):
     name, label = 'go', l_('Go')
     directives = {
+      'const':   make_directive('const'),
+      'func':    make_directive('func'),
       'package': make_directive('package'),
+      'type':    make_directive('type'),
     }
 
 class JSDomain(PolyglotDomain):
