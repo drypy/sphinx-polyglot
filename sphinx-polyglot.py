@@ -14,14 +14,6 @@ from sphinx.directives import ObjectDescription
 from sphinx.domains import Domain, ObjType
 from sphinx.locale import l_, _
 
-GO_FUNC_SIG_RE = re.compile(
-  r'''^
-      (?: \( \S+\s+([^)]+) \) )? \s*  # method receiver
-      ([\w]+) \s*                     # function name
-      \( ([^)]*) \) \s*               # function parameters
-      (.*)$                           # return type
-  ''', re.VERBOSE)
-
 class PolyglotObject(ObjectDescription):
     def handle_signature(self, sig, sig_node):
         result = self.describe_signature(sig, sig_node) # TODO
@@ -53,52 +45,66 @@ class PolyglotObject(ObjectDescription):
         if index_text:
             self.indexnode['entries'].append(('single', index_text, target_name, '', None))
 
-def make_directive(directive_name):
+    def make_namespace_prefix(self, name):
+        return addnodes.desc_addname(name, name)
+
+    def make_parameter_list(self, *params):
+      result = addnodes.desc_parameterlist()
+      for param in params:
+          result += addnodes.desc_parameter(param, param, noemph=True)
+      return result
+
+def make_directive(directive_name, namespace_separator=None):
     class PolyglotDirective(PolyglotObject):
         def get_index_text(self, _objtype, name):
             domain_label = self.env.domains[self.domain].label
             return _('%s (%s %s)') % (name, domain_label, directive_name)
 
         def describe_signature(self, sig, sig_node):
-            annot_text = directive_name + ' '
-            sig_node += addnodes.desc_annotation(annot_text, annot_text)
+            directive_annot = directive_name + ' '
+            sig_node += addnodes.desc_annotation(directive_annot, directive_annot)
+
+            if namespace_separator is not None:
+                namespace_prefix = self.env.ref_context.get('polyglot:namespace')
+                if namespace_prefix is not None:
+                    sig_node += self.make_namespace_prefix(namespace_prefix + namespace_separator)
+
             sig_node += addnodes.desc_name(sig, sig)
 
     return PolyglotDirective
 
-class GoPackageDirective(make_directive('package')):
-    def run(self):
-        env = self.state.document.settings.env
-        env.ref_context['go:package'] = self.arguments[0].strip()
-        return super().run()
+def make_namespace_directive(directive_name):
+    class PolyglotNamespaceDirective(make_directive(directive_name, None)):
+        def run(self):
+            env = self.state.document.settings.env
+            env.ref_context['polyglot:namespace'] = self.arguments[0].strip()
+            return super().run()
+
+    return PolyglotNamespaceDirective
 
 class GoFuncDirective(make_directive('function')):
+    GO_FUNC_SIG_RE = re.compile(
+      r'''^
+          (?: \( \S+\s+([^)]+) \) )? \s*  # method receiver
+          ([\w]+) \s*                     # function name
+          \( ([^)]*) \) \s*               # function parameters
+          (.*)$                           # return type
+      ''', re.VERBOSE)
+
     def describe_signature(self, sig, sig_node):
-        sig_match = GO_FUNC_SIG_RE.match(sig)
-        if sig_match is None:
-            raise ValueError('no match')
+        sig_match = self.GO_FUNC_SIG_RE.match(sig)
+        if sig_match is None: raise ValueError('no match')
         method_receiver, func_name, func_params, func_return = sig_match.groups()
+        package_name = self.env.ref_context.get('polyglot:namespace')
 
         sig_node += addnodes.desc_annotation('func ', 'func ')
-
         if method_receiver is not None:
-            param_list = addnodes.desc_parameterlist()
-            param_list += addnodes.desc_parameter(method_receiver, method_receiver, noemph=True)
-            sig_node += param_list
-
-        package_name = self.env.ref_context.get('go:package')
+            sig_node += self.make_parameter_list(method_receiver)
         if package_name is not None:
-            package_name += '.'
-            sig_node += addnodes.desc_addname(package_name, package_name)
-
+            sig_node += self.make_namespace_prefix(package_name + '.')
         sig_node += addnodes.desc_name(func_name, func_name)
-
         if func_params is not None:
-            param_list = addnodes.desc_parameterlist()
-            param = addnodes.desc_parameter(func_params, func_params, noemph=True) # TODO: split params
-            param_list += param
-            sig_node += param_list
-
+            sig_node += self.make_parameter_list(func_params) # TODO: split params
         if func_return is not None:
             sig_node += nodes.Text(' ')
             sig_node += addnodes.desc_returns(func_return, func_return)
@@ -137,50 +143,50 @@ class PolyglotDomain(Domain):
 class CLDomain(PolyglotDomain):
     name, label = 'lisp', l_('Common Lisp')
     directives = {
-      'package': make_directive('package'),
+      'package': make_namespace_directive('package'),
       'system':  make_directive('system'),
     }
 
 class DotnetDomain(PolyglotDomain):
     name, label = 'dotnet', l_('.NET')
     directives = {
-      'assembly': make_directive('assembly'),
+      'assembly': make_namespace_directive('assembly'),
     }
 
 class ElixirDomain(PolyglotDomain):
     name, label = 'ex', l_('Elixir')
     directives = {
-      'module':  make_directive('module'),
+      'module':  make_namespace_directive('module'),
       'package': make_directive('package'),
     }
 
 class ErlangDomain(PolyglotDomain):
     name, label = 'erl', l_('Erlang')
     directives = {
-      'module':  make_directive('module'),
+      'module':  make_namespace_directive('module'),
       'package': make_directive('package'),
     }
 
 class GoDomain(PolyglotDomain):
     name, label = 'go', l_('Go')
     directives = {
-      'const':   make_directive('constant'),
+      'const':   make_directive('constant', '.'),
       'func':    GoFuncDirective,
-      'package': GoPackageDirective,
-      'type':    make_directive('type'),
+      'package': make_namespace_directive('package'),
+      'type':    make_directive('type', '.'),
     }
 
 class JSDomain(PolyglotDomain):
     name, label = 'js', l_('JavaScript')
     directives = {
-      'module':  make_directive('module'),
+      'module':  make_namespace_directive('module'),
       'package': make_directive('package'),
     }
 
 class JVMDomain(PolyglotDomain):
     name, label = 'jvm', l_('JVM')
     directives = {
-      'package': make_directive('package'),
+      'package': make_namespace_directive('package'),
     }
 
 class JavaDomain(JVMDomain):
@@ -192,20 +198,20 @@ class KotlinDomain(JVMDomain):
 class LuaDomain(PolyglotDomain):
     name, label = 'lua', l_('Lua')
     directives = {
-      'module': make_directive('module'),
+      'module': make_namespace_directive('module'),
     }
 
 class OCamlDomain(PolyglotDomain):
     name, label = 'ml', l_('OCaml')
     directives = {
-      'module':  make_directive('module'),
+      'module':  make_namespace_directive('module'),
       'package': make_directive('package'),
     }
 
 class PHPDomain(PolyglotDomain):
     name, label = 'php', l_('PHP')
     directives = {
-      'namespace': make_directive('namespace'),
+      'namespace': make_namespace_directive('namespace'),
       'package':   make_directive('package'),
     }
 
@@ -213,19 +219,19 @@ class RubyDomain(PolyglotDomain):
     name, label = 'rb', l_('Ruby')
     directives = {
       'library': make_directive('library'),
-      'module':  make_directive('module'),
+      'module':  make_namespace_directive('module'),
     }
 
 class SQLDomain(PolyglotDomain):
     name, label = 'sql', l_('SQL')
     directives = {
-      'channel':  make_directive('channel'),
-      'function': make_directive('function'),
-      'schema':   make_directive('schema'),
-      'table':    make_directive('table'),
-      'trigger':  make_directive('trigger'),
-      'type':     make_directive('type'),
-      'view':     make_directive('view'),
+      'channel':  make_directive('channel', '.'),
+      'function': make_directive('function', '.'),
+      'schema':   make_namespace_directive('schema'),
+      'table':    make_directive('table', '.'),
+      'trigger':  make_directive('trigger', '.'),
+      'type':     make_directive('type', '.'),
+      'view':     make_directive('view', '.'),
     }
 
 def setup(app):
