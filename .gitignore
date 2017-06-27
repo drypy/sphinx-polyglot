@@ -3,3 +3,7 @@
 
 # Editor backup files
 *~
+
+# Python artifacts
+__pycache__
+*.pyc
