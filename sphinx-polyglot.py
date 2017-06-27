@@ -86,7 +86,7 @@ class GoFuncDirective(make_directive('function')):
     GO_FUNC_SIG_RE = re.compile(
       r'''^
           (?: \( \S+\s+([^)]+) \) )? \s*  # method receiver
-          ([\w]+) \s*                     # function name
+          ([\w.]+) \s*                    # function name
           \( ([^)]*) \) \s*               # function parameters
           (.*)$                           # return type
       ''', re.VERBOSE)
@@ -95,6 +95,8 @@ class GoFuncDirective(make_directive('function')):
         sig_match = self.GO_FUNC_SIG_RE.match(sig)
         if sig_match is None: raise ValueError('no match')
         method_receiver, func_name, func_params, func_return = sig_match.groups()
+
+        # TODO: also attempt to parse package name from func_name
         package_name = self.env.ref_context.get('polyglot:namespace')
 
         sig_node += addnodes.desc_annotation('func ', 'func ')
@@ -105,7 +107,35 @@ class GoFuncDirective(make_directive('function')):
         sig_node += addnodes.desc_name(func_name, func_name)
         if func_params is not None:
             sig_node += self.make_parameter_list(func_params) # TODO: split params
-        if func_return is not None:
+        if func_return is not None and len(func_return) > 0:
+            sig_node += nodes.Text(' ')
+            sig_node += addnodes.desc_returns(func_return, func_return)
+
+        return func_name
+
+class SQLFunctionDirective(make_directive('function')):
+    SQL_FUNCTION_SIG_RE = re.compile(
+      r'''^
+          ([\w.]+) \s*                    # function name
+          \( ([^)]*) \) \s*               # function parameters
+          (.*)$                           # return type
+      ''', re.VERBOSE)
+
+    def describe_signature(self, sig, sig_node):
+        sig_match = self.SQL_FUNCTION_SIG_RE.match(sig)
+        if sig_match is None: raise ValueError('no match')
+        func_name, func_params, func_return = sig_match.groups()
+
+        # TODO: also attempt to parse package name from func_name
+        package_name = self.env.ref_context.get('polyglot:namespace')
+
+        sig_node += addnodes.desc_annotation('function ', 'function ')
+        if package_name is not None:
+            sig_node += self.make_namespace_prefix(package_name + '.')
+        sig_node += addnodes.desc_name(func_name, func_name)
+        if func_params is not None:
+            sig_node += self.make_parameter_list(func_params) # TODO: split params
+        if func_return is not None and len(func_return) > 0:
             sig_node += nodes.Text(' ')
             sig_node += addnodes.desc_returns(func_return, func_return)
 
@@ -226,7 +256,7 @@ class SQLDomain(PolyglotDomain):
     name, label = 'sql', l_('SQL')
     directives = {
       'channel':  make_directive('channel', '.'),
-      'function': make_directive('function', '.'),
+      'function': SQLFunctionDirective,
       'schema':   make_namespace_directive('schema'),
       'table':    make_directive('table', '.'),
       'trigger':  make_directive('trigger', '.'),
