@@ -30,6 +30,7 @@ class PolyglotObject(ObjectDescription):
         return result
 
     def describe_signature(self, _sig, _sig_node):
+        # type: (unicode, addnodes.desc_signature) -> None
         raise NotImplementedError()
 
     def add_target_and_index(self, name, sig, sig_node):
@@ -65,10 +66,13 @@ def make_directive(directive_name):
 
     return PolyglotDirective
 
-class GoFuncDirective(PolyglotObject):
-    def get_index_text(self, _objtype, name):
-        return _('%s (Go function)') % name
+class GoPackageDirective(make_directive('package')):
+    def run(self):
+        env = self.state.document.settings.env
+        env.ref_context['go:package'] = self.arguments[0].strip()
+        return super().run()
 
+class GoFuncDirective(make_directive('function')):
     def describe_signature(self, sig, sig_node):
         sig_match = GO_FUNC_SIG_RE.match(sig)
         if sig_match is None:
@@ -81,6 +85,11 @@ class GoFuncDirective(PolyglotObject):
             param_list = addnodes.desc_parameterlist()
             param_list += addnodes.desc_parameter(method_receiver, method_receiver, noemph=True)
             sig_node += param_list
+
+        package_name = self.env.ref_context.get('go:package')
+        if package_name is not None:
+            package_name += '.'
+            sig_node += addnodes.desc_addname(package_name, package_name)
 
         sig_node += addnodes.desc_name(func_name, func_name)
 
@@ -155,9 +164,9 @@ class ErlangDomain(PolyglotDomain):
 class GoDomain(PolyglotDomain):
     name, label = 'go', l_('Go')
     directives = {
-      'const':   make_directive('const'),
+      'const':   make_directive('constant'),
       'func':    GoFuncDirective,
-      'package': make_directive('package'),
+      'package': GoPackageDirective,
       'type':    make_directive('type'),
     }
 
