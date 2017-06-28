@@ -182,8 +182,9 @@ class CLDomain(PolyglotDomain):
 class DotnetDomain(PolyglotDomain):
     name, label = 'dotnet', l_('.NET')
     directives = {
-      'assembly': make_namespace_directive('assembly'),
-      'class':    make_directive('class', '.'),
+      'assembly':  make_directive('assembly'),
+      'class':     make_directive('class', '.'),
+      'namespace': make_namespace_directive('namespace'),
     }
 
 class ElixirDomain(PolyglotDomain):
