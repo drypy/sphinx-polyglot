@@ -155,9 +155,11 @@ class PolyglotDomain(Domain):
       'function':  ObjType(l_('function'),  'function'),
       'header':    ObjType(l_('header'),    'header'),
       'library':   ObjType(l_('library'),   'library'),
+      'method':    ObjType(l_('method'),    'method'),
       'module':    ObjType(l_('module'),    'module'),
       'namespace': ObjType(l_('namespace'), 'namespace'),
       'package':   ObjType(l_('package'),   'package'),
+      'property':  ObjType(l_('property'),  'property'),
       'schema':    ObjType(l_('schema'),    'schema'),
       'system':    ObjType(l_('system'),    'system'),
       'table':     ObjType(l_('table'),     'table'),
@@ -223,6 +225,7 @@ class JVMDomain(PolyglotDomain):
     directives = {
       'class':   make_directive('class', '.'),
       'package': make_namespace_directive('package'),
+      'method':  make_directive('method'),
     }
 
 class JavaDomain(JVMDomain):
@@ -230,6 +233,12 @@ class JavaDomain(JVMDomain):
 
 class KotlinDomain(JVMDomain):
     name, label = 'kt', l_('Kotlin')
+    directives = {
+      'class':    make_directive('class', '.'),
+      'package':  make_namespace_directive('package'),
+      'method':   make_directive('method'),
+      'property': make_directive('property'),
+    }
 
 class LuaDomain(PolyglotDomain):
     name, label = 'lua', l_('Lua')
