@@ -113,6 +113,34 @@ class GoFuncDirective(make_directive('function')):
 
         return func_name
 
+class KotlinPropertyDirective(make_directive('property')):
+    KOTLIN_METHOD_SIG_RE = re.compile(
+      r'''^
+          ([\w.]+)                        # class name
+          \#
+          ([\w]+) \s*                     # property name
+          :\s*
+          (.*)$                           # property type
+      ''', re.VERBOSE)
+
+    def describe_signature(self, sig, sig_node):
+        sig_match = self.KOTLIN_METHOD_SIG_RE.match(sig)
+        if sig_match is None: raise ValueError('no match')
+        class_name, prop_name, prop_type = sig_match.groups()
+
+        # TODO: also attempt to parse package name from prop_name
+        package_name = self.env.ref_context.get('polyglot:namespace')
+
+        sig_node += addnodes.desc_annotation('property ', 'property ')
+        if package_name is not None:
+            sig_node += self.make_namespace_prefix(package_name + '.' + class_name + '.')
+        sig_node += addnodes.desc_name(prop_name, prop_name)
+        if prop_type is not None and len(prop_type) > 0:
+            sig_node += nodes.Text(' ')
+            sig_node += addnodes.desc_returns(prop_type, prop_type)
+
+        return class_name + '#' + prop_name
+
 class SQLFunctionDirective(make_directive('function')):
     SQL_FUNCTION_SIG_RE = re.compile(
       r'''^
@@ -237,7 +265,7 @@ class KotlinDomain(JVMDomain):
       'class':    make_directive('class', '.'),
       'package':  make_namespace_directive('package'),
       'method':   make_directive('method'),
-      'property': make_directive('property'),
+      'property': KotlinPropertyDirective,
     }
 
 class LuaDomain(PolyglotDomain):
