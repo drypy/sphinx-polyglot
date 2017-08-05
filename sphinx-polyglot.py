@@ -113,8 +113,41 @@ class GoFuncDirective(make_directive('function')):
 
         return func_name
 
-class KotlinPropertyDirective(make_directive('property')):
+class KotlinMethodDirective(make_directive('method')):
     KOTLIN_METHOD_SIG_RE = re.compile(
+      r'''^
+          ([\w.]+)                        # class name
+          \#
+          ([\w]+) \s*                     # method name
+          \(
+          ([^\)]*)                        # method params
+          \)
+          :\s*
+          (.*)$                           # method type
+      ''', re.VERBOSE)
+
+    def describe_signature(self, sig, sig_node):
+        sig_match = self.KOTLIN_METHOD_SIG_RE.match(sig)
+        if sig_match is None: raise ValueError('no match')
+        class_name, method_name, method_params, method_type = sig_match.groups()
+
+        # TODO: also attempt to parse package name from method_name
+        package_name = self.env.ref_context.get('polyglot:namespace')
+
+        sig_node += addnodes.desc_annotation('method ', 'method ')
+        if package_name is not None:
+            sig_node += self.make_namespace_prefix(package_name + '.' + class_name + '.')
+        sig_node += addnodes.desc_name(method_name, method_name)
+        if method_params is not None:
+            sig_node += self.make_parameter_list(method_params) # TODO: split params
+        if method_type is not None and len(method_type) > 0:
+            sig_node += nodes.Text(' ')
+            sig_node += addnodes.desc_returns(method_type, method_type)
+
+        return class_name + '#' + method_name
+
+class KotlinPropertyDirective(make_directive('property')):
+    KOTLIN_PROPERTY_SIG_RE = re.compile(
       r'''^
           ([\w.]+)                        # class name
           \#
@@ -124,7 +157,7 @@ class KotlinPropertyDirective(make_directive('property')):
       ''', re.VERBOSE)
 
     def describe_signature(self, sig, sig_node):
-        sig_match = self.KOTLIN_METHOD_SIG_RE.match(sig)
+        sig_match = self.KOTLIN_PROPERTY_SIG_RE.match(sig)
         if sig_match is None: raise ValueError('no match')
         class_name, prop_name, prop_type = sig_match.groups()
 
@@ -264,7 +297,7 @@ class KotlinDomain(JVMDomain):
     directives = {
       'class':    make_directive('class', '.'),
       'package':  make_namespace_directive('package'),
-      'method':   make_directive('method'),
+      'method':   KotlinMethodDirective,
       'property': KotlinPropertyDirective,
     }
 
